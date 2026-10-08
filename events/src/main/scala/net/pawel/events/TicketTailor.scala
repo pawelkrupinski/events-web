@@ -1,11 +1,9 @@
 package net.pawel.events
 
-import com.sun.jndi.toolkit.url.Uri
 import io.lemonlabs.uri.Url
 import net.pawel.events.domain.{Event, Organizer, OrganizerType}
 import org.jsoup.nodes.{Document, Element}
 
-import java.net.{URI, URL}
 import java.time.format.DateTimeFormatter
 import java.time.temporal.TemporalQueries
 import java.time.{LocalDate, LocalTime, ZoneId, ZonedDateTime}

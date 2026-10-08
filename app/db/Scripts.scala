@@ -204,3 +204,53 @@ object GoogleCalendar extends App {
 object Bla extends App {
 
 }
+
+// Seeds the local Mongo with fake events for the next 7 days so the calendar can be previewed.
+// Run with: sbt "runMain db.SeedFakeEvents"
+object SeedFakeEvents extends App with Repositories with Common {
+  import java.time.{LocalDate, LocalTime, ZoneId, ZonedDateTime}
+
+  private val zone = ZoneId.of("Europe/London")
+  private val firstDay = LocalDate.now(zone).plusDays(1)
+
+  private val names = Vector(
+    "Morning Meditation", "Sound Bath Healing", "Breathwork Journey", "Ecstatic Dance",
+    "Vinyasa Yoga Flow", "Cacao Ceremony", "Kirtan & Mantra Singing", "Mindfulness Workshop",
+    "Conscious Connection", "Gong Bath Relaxation", "Qi Gong in the Park", "Vegan Supper Club",
+    "Improv Playtime", "Authentic Relating Games", "Forest Bathing Walk", "Women's Circle",
+    "Men's Circle", "Reiki Healing Share", "Journaling for Clarity", "Tea Ceremony"
+  )
+  private val venues = Vector(
+    "The Light Centre, Belgravia, London", "Triyoga, Camden, London",
+    "Rudolf Steiner House, Marylebone, London", "Re:Mind Studio, Victoria, London",
+    "Online", "Hackney Wick, London", "Shoreditch Town Hall, London",
+    "Alchemy, Camden, London", "The Refinery, Shoreditch, London", "Regent's Park, London"
+  )
+
+  // Repeated hours (9, 18, 19) produce several events starting at the same time each day.
+  private val startHours = Vector(8, 9, 9, 11, 12, 14, 16, 18, 18, 19, 19, 20)
+
+  private val events: List[Event] = (0 until 7).toList.flatMap { dayOffset =>
+    val date = firstDay.plusDays(dayOffset)
+    startHours.zipWithIndex.map { case (hour, idx) =>
+      val start = ZonedDateTime.of(date, LocalTime.of(hour, 0), zone).toInstant
+      val durationHours = 1 + (idx % 3)
+      val end = start.plusSeconds(durationHours * 3600L)
+      val name = names((dayOffset * startHours.size + idx) % names.size)
+      val venue = venues((dayOffset + idx) % venues.size)
+      Event(
+        name = name,
+        url = s"https://example.com/event/$dayOffset-$idx",
+        start = start,
+        end = end,
+        address = venue,
+        organizerUrl = s"https://example.com/organizer/${idx % 4}"
+      )
+    }
+  }
+
+  await(eventRepository.collection.deleteMany(Document()).toFuture())
+  await(Future.sequence(events.map(eventRepository.upsert)))
+  println(s"Inserted ${events.size} fake events (${startHours.size}/day) for 7 days starting $firstDay.")
+  System.exit(0)
+}
